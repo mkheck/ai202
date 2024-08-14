@@ -1,0 +1,16 @@
+= AI 202: Next-level Mastery for Java Developers
+
+== Maintainer
+
+* Mark Heckler
+* mailto:mark@thehecklers.com[mark@thehecklers.com]
+* mailto:mark.heckler@gmail.com[mark.heckler@gmail.com]
+* https://x.com/mkheck[@mkheck on X]
+
+== Purpose
+
+This repo accompanies my session titled *"AI 202: Next-level Mastery for Java Developers"* and includes the code written within the session and much more. Please star+watch to be notified of updates, as there will be _many_.
+
+== Related presentation
+
+One may be forthcoming, but this session was designed to be 99% code. So please star+watch the repo and drop me a line if you'd like to see some slides accompany this. That way, you'll be notified once a repo link is added, code changes, etc. All the good stuff. :) Cheers!
