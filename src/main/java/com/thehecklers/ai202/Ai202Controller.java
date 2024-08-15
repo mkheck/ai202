@@ -139,7 +139,7 @@ public class Ai202Controller {
         var media = (imagePath.startsWith("http") ?
                 new Media(imageType, new URL(imagePath)) :
                 new Media(imageType, new FileSystemResource(imagePath)));
-        var userMessage = new UserMessage("What is this image?", List.of(media));
+        var userMessage = new UserMessage("What is this image?", media);
 
         return chatModel.call(new Prompt(List.of(userMessage),
                         OpenAiChatOptions.builder().withModel(OpenAiApi.ChatModel.GPT_4_O.getValue()).build()))
