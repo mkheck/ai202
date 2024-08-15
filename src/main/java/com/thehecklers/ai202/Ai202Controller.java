@@ -105,15 +105,13 @@ public class Ai202Controller {
 
     @GetMapping("/translate")
     public String getTranslation(@RequestParam(defaultValue = "What is the meaning of life?") String message,
-                                @RequestParam(required = false) String language,
+                                 @RequestParam(required = false) String language,
                                  @RequestParam(defaultValue = "false") boolean save) throws IOException {
         var content = client.prompt()
                 .user(message)
                 .system(s -> {
-                    if (language != null) {
-                        s.text("You respond in {language}");
-                        s.param("language", language);
-                    }
+                    if (language != null) s.text("You respond in {language}")
+                                .param("language", language);
                 })
                 .call()
                 .content();
@@ -144,7 +142,7 @@ public class Ai202Controller {
         var userMessage = new UserMessage("What is this image?", List.of(media));
 
         return chatModel.call(new Prompt(List.of(userMessage),
-                OpenAiChatOptions.builder().withModel(OpenAiApi.ChatModel.GPT_4_O.getValue()).build()))
+                        OpenAiChatOptions.builder().withModel(OpenAiApi.ChatModel.GPT_4_O.getValue()).build()))
                 .getResult()
                 .getOutput()
                 .getContent();
