@@ -1,11 +1,11 @@
 package com.thehecklers.ai202;
 
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
-import org.springframework.ai.chat.messages.Media;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -13,14 +13,17 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
+import org.springframework.ai.model.Media;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.openai.audio.speech.SpeechPrompt;
 import org.springframework.ai.openai.audio.speech.SpeechResponse;
+import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,7 +32,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.List;
 
 @RestController
 public class Ai202Controller {
@@ -111,18 +113,52 @@ public class Ai202Controller {
                 .user(message)
                 .system(s -> {
                     if (language != null) s.text("You respond in {language}")
-                                .param("language", language);
+                            .param("language", language);
                 })
                 .call()
                 .content();
 
-        if (save) convertToSpeech(content);
+        if (save) convertToSpeech(content, "/Users/markheckler/files/TTS_Output.mp3");
 
         return content;
     }
 
-    private void convertToSpeech(String content) throws IOException {
-        var fsr = new FileSystemResource("/Users/markheckler/files/TTS_Output.mp3");
+    @GetMapping("/docaudio")
+    public String convertDocToAudio(@RequestParam String filepath) throws IOException {
+        /*
+         Using GET and not POST since we're feeding in a file path or URL, then using that
+         to navigate to the file and read it in. No request body needed or even desired.
+         */
+        var logger = LoggerFactory.getLogger(Ai202Controller.class);
+        var importFile = filepath.startsWith("http")
+                ? new UrlResource(filepath)
+                : new FileSystemResource(filepath);
+        var infile = importFile.getFilename() != null
+                ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
+                : "DocAudio";
+        var outfile = String.format("/Users/markheckler/files/%s.mp3", infile);
+        var docBuilder = new StringBuilder();
+        var tikaDocumentReader = new TikaDocumentReader(importFile);
+
+        logger.info("Processing " + importFile.getFilename());
+
+        tikaDocumentReader.get()
+                .stream()
+                .forEach(doc -> docBuilder.append(doc.getContent()));
+
+        var docContent = docBuilder.toString();
+
+        logger.info("Converting to audio and saving " + outfile);
+
+        convertToSpeech(docContent, outfile);
+
+        logger.info("Audio conversion and save complete for " + outfile);
+
+        return docContent;
+    }
+
+    private void convertToSpeech(String content, String outputDest) throws IOException {
+        var fsr = new FileSystemResource(outputDest);
 
         SpeechResponse response = speechModel.call(new SpeechPrompt(content));
 
