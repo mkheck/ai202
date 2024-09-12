@@ -1,5 +1,6 @@
 package com.thehecklers.ai202;
 
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
@@ -10,6 +11,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
@@ -29,17 +31,23 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
 public class Ai202Controller {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final ChatClient client;
     private final ChatModel chatModel;
     private final OpenAiAudioSpeechModel speechModel;
     private final VectorStore vectorStore;
     private final ImageModel imageModel;
+
+    private static final String DIR_IN = "/Users/markheckler/files/in";
+    private static final String DIR_OUT = "/Users/markheckler/files/out";
 
     public Ai202Controller(ChatClient.Builder builder, ChatModel chatModel, OpenAiAudioSpeechModel speechModel, VectorStore vectorStore, ImageModel imageModel) {
         // We'll revisit this later. This is going to be legen...wait for it...
@@ -94,7 +102,6 @@ public class Ai202Controller {
                 .content();
     }
 
-    // Insert stateless joke here!
     @GetMapping("/conversation")
     public ChatResponse getConversation(@RequestParam(defaultValue = "What is the meaning of life?") String message,
                                         @RequestParam(defaultValue = "default") String conversationId) {
@@ -118,56 +125,62 @@ public class Ai202Controller {
                 .call()
                 .content();
 
-        if (save) convertToSpeech(content, "/Users/markheckler/files/TTS_Output.mp3");
+        if (save) convertToSpeech(content, DIR_OUT +
+                String.format("/TTS_Output%s.mp3", language != null ? "_" + language : ""));
 
         return content;
     }
 
     @GetMapping("/docaudio")
     public String convertDocToAudio(@RequestParam String filepath) throws IOException {
-        /*
-         Using GET and not POST since we're feeding in a file path or URL, then using that
-         to navigate to the file and read it in. No request body needed or even desired.
-         */
-        var logger = LoggerFactory.getLogger(Ai202Controller.class);
         var importFile = filepath.startsWith("http")
                 ? new UrlResource(filepath)
                 : new FileSystemResource(filepath);
         var infile = importFile.getFilename() != null
                 ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
                 : "DocAudio";
-        var outfile = String.format("/Users/markheckler/files/%s.mp3", infile);
-        var docBuilder = new StringBuilder();
-        var tikaDocumentReader = new TikaDocumentReader(importFile);
 
         logger.info("Processing " + importFile.getFilename());
 
-        tikaDocumentReader.get()
-                .stream()
-                .forEach(doc -> docBuilder.append(doc.getContent()));
+        var documents = new TikaDocumentReader(importFile).get();
+        logger.info(String.format("Converting to audio and saving %d file(s) to %s", documents.size(), DIR_OUT));
 
-        var docContent = docBuilder.toString();
+        var counter = new AtomicInteger(1);
+        for (Document doc : documents) {
+            logger.info(String.format("Processing document %d, %d characters.", counter.get(), doc.getContent().length()));
+            convertToSpeech(doc.getContent(),
+                    String.format("%s/%s_%d.mp3", DIR_OUT, infile, counter.getAndIncrement()));
+        }
 
-        logger.info("Converting to audio and saving " + outfile);
-
-        convertToSpeech(docContent, outfile);
-
-        logger.info("Audio conversion and save complete for " + outfile);
-
-        return docContent;
+        logger.info("Audio conversion and save complete for " + infile);
+        return "Audio conversion and save complete for " + infile;
     }
 
     private void convertToSpeech(String content, String outputDest) throws IOException {
         var fsr = new FileSystemResource(outputDest);
+        var outputStream = new ByteArrayOutputStream();
 
-        SpeechResponse response = speechModel.call(new SpeechPrompt(content));
+        var counter = new AtomicInteger(1);
+        int numberOfSegments = (int) Math.ceil((double) content.length() / 4096);
+        while (!content.isEmpty()) {
+            logger.info(String.format("Converting segment %d of %d to audio", counter.getAndIncrement(), numberOfSegments));
 
-        fsr.getOutputStream().write(response.getResult().getOutput());
+            var textToSpeech = content.substring(0, Math.min(content.length(), 4096));
+            if (textToSpeech.length() == 4096) {
+                textToSpeech = textToSpeech.substring(0, textToSpeech.lastIndexOf(' '));
+            }
+            content = content.substring(textToSpeech.length());
+
+            SpeechResponse response = speechModel.call(new SpeechPrompt(textToSpeech));
+            outputStream.write(response.getResult().getOutput());
+        }
+
+        fsr.getOutputStream().write(outputStream.toByteArray());
     }
 
-    // Multimodal magic! (Insert "Any sufficiently advanced technology is indistinguishable from magic" quote here)
+    // Multimodal magic!
     @GetMapping("/mm")
-    public String getImageDescription(@RequestParam(defaultValue = "/Users/markheckler/files/testimage.jpg") String imagePath) throws MalformedURLException {
+    public String getImageDescription(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagePath) throws MalformedURLException {
         // For sample URL, try this (courtesy of Spring AI docs): "https://docs.spring.io/spring-ai/reference/1.0-SNAPSHOT/_images/multimodal.test.png"
         // For sample local file, you'll need to supply a full filepath
         // Keep it simple, only accept JPEGs and PNGs
