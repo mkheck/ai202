@@ -11,6 +11,12 @@
 
 This repo accompanies my session titled *"AI 202: Next-level Mastery for Java Developers"* and includes the code written within the session and much more. Please star+watch to be notified of updates, as there will be _many_.
 
+== Essential information
+
+This project requires an OpenAI API key to be defined and provided to the application via Spring-accessible environment variables. For more information on ways to supply this value to your application, please refer to https://docs.spring.io/spring-boot/reference/features/external-config.html[the Spring Boot docs reference on Externalized Configuration]. If you use an alternative provider, please refer to the https://docs.spring.io/spring-ai/reference/[Spring AI documentation for the variables applicable to your choice of models/implementations].
+
+TL;DR: You'll need *at a minimum* to have a variable `SPRING_AI_OPENAI_API_KEY` with your OpenAI-assigned API key in your application environment if you're using OpenAI's API.
+
 == Related presentation
 
 One may be forthcoming, but this session was designed to be 99% code. So please star+watch the repo and drop me a line if you'd like to see some slides accompany this. That way, you'll be notified once a repo link is added, code changes, etc. All the good stuff. :) Cheers!
