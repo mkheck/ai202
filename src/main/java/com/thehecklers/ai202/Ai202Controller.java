@@ -137,7 +137,9 @@ public class Ai202Controller {
                 ? new UrlResource(filepath)
                 : new FileSystemResource(filepath);
         var infile = importFile.getFilename() != null
-                ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
+                ? importFile.getFilename().contains(".")
+                    ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
+                    : importFile.getFilename()
                 : "DocAudio";
 
         logger.info("Processing " + importFile.getFilename());
