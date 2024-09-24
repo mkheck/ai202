@@ -114,48 +114,17 @@ public class Ai202Controller {
 
     @GetMapping("/translate")
     public String getTranslation(@RequestParam(defaultValue = "What is the meaning of life?") String message,
-                                 @RequestParam(required = false) String language,
+                                 @RequestParam(defaultValue = "English") String language,
                                  @RequestParam(defaultValue = "false") boolean save) throws IOException {
         var content = client.prompt()
                 .user(message)
-                .system(s -> {
-                    if (language != null) s.text("You respond in {language}")
-                            .param("language", language);
-                })
+                .system(s -> s.text("You respond in {language}").param("language", language))
                 .call()
                 .content();
 
-        if (save) convertToSpeech(content, DIR_OUT +
-                String.format("/TTS_Output%s.mp3", language != null ? "_" + language : ""));
+        if (save) convertToSpeech(content, DIR_OUT + String.format("/TTS_Output_%s.mp3", language));
 
         return content;
-    }
-
-    @GetMapping("/docaudio")
-    public String convertDocToAudio(@RequestParam String filepath) throws IOException {
-        var importFile = filepath.startsWith("http")
-                ? new UrlResource(filepath)
-                : new FileSystemResource(filepath);
-        var infile = importFile.getFilename() != null
-                ? importFile.getFilename().contains(".")
-                    ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
-                    : importFile.getFilename()
-                : "DocAudio";
-
-        logger.info("Processing " + importFile.getFilename());
-
-        var documents = new TikaDocumentReader(importFile).get();
-        logger.info(String.format("Converting to audio and saving %d file(s) to %s", documents.size(), DIR_OUT));
-
-        var counter = new AtomicInteger(1);
-        for (Document doc : documents) {
-            logger.info(String.format("Processing document %d, %d characters.", counter.get(), doc.getContent().length()));
-            convertToSpeech(doc.getContent(),
-                    String.format("%s/%s_%d.mp3", DIR_OUT, infile, counter.getAndIncrement()));
-        }
-
-        logger.info("Audio conversion and save complete for " + infile);
-        return "Audio conversion and save complete for " + infile;
     }
 
     private void convertToSpeech(String content, String outputDest) throws IOException {
@@ -180,7 +149,33 @@ public class Ai202Controller {
         fsr.getOutputStream().write(outputStream.toByteArray());
     }
 
-    // Multimodal magic!
+    @GetMapping("/docaudio")
+    public String convertDocToAudio(@RequestParam String filepath) throws IOException {
+        var importFile = filepath.startsWith("http")
+                ? new UrlResource(filepath)
+                : new FileSystemResource(filepath);
+        var infile = importFile.getFilename() != null
+                ? importFile.getFilename().contains(".")
+                ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
+                : importFile.getFilename()
+                : "DocAudio";
+
+        logger.info("Processing " + importFile.getFilename());
+
+        var documents = new TikaDocumentReader(importFile).get();
+        logger.info(String.format("Converting to audio and saving %d file(s) to %s", documents.size(), DIR_OUT));
+
+        var counter = new AtomicInteger(1);
+        for (Document doc : documents) {
+            logger.info(String.format("Processing document %d, %d characters.", counter.get(), doc.getContent().length()));
+            convertToSpeech(doc.getContent(),
+                    String.format("%s/%s_%d.mp3", DIR_OUT, infile, counter.getAndIncrement()));
+        }
+
+        logger.info("Audio conversion and save complete for " + infile);
+        return "Audio conversion and save complete for " + infile;
+    }
+
     @GetMapping("/mm")
     public String getImageDescription(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagePath) throws MalformedURLException {
         // For sample URL, try this (courtesy of Spring AI docs): "https://docs.spring.io/spring-ai/reference/1.0-SNAPSHOT/_images/multimodal.test.png"
