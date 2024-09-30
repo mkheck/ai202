@@ -7,8 +7,6 @@ import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.image.ImageModel;
@@ -38,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Ai202Controller {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final ChatClient client;
-    private final ChatModel chatModel;
     private final OpenAiAudioSpeechModel speechModel;
     private final VectorStore vectorStore;
     private final ImageModel imageModel;
@@ -46,14 +43,13 @@ public class Ai202Controller {
     private static final String DIR_IN = "/Users/markheckler/files/in";
     private static final String DIR_OUT = "/Users/markheckler/files/out";
 
-    public Ai202Controller(ChatClient.Builder builder, ChatModel chatModel, OpenAiAudioSpeechModel speechModel, VectorStore vectorStore, ImageModel imageModel) {
+    public Ai202Controller(ChatClient.Builder builder, OpenAiAudioSpeechModel speechModel, VectorStore vectorStore, ImageModel imageModel) {
         // We'll revisit this later. This is going to be legen...wait for it...
         //this.client = builder.build(); ...DARY!
         this.client = builder.defaultAdvisors(
                         new MessageChatMemoryAdvisor(new InMemoryChatMemory(), "default", 10))
                 .build();
 
-        this.chatModel = chatModel;
         this.speechModel = speechModel;
         this.vectorStore = vectorStore;
         this.imageModel = imageModel;
@@ -174,17 +170,20 @@ public class Ai202Controller {
     }
 
     @GetMapping("/mm")
-    public String getImageDescription(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagePath) throws MalformedURLException {
+    public String getImageDescription(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagePath,
+                                      @RequestParam(defaultValue = "What is in this image?") String message) throws MalformedURLException {
         // For sample URL, try this (courtesy of Spring AI docs): "https://docs.spring.io/spring-ai/reference/1.0-SNAPSHOT/_images/multimodal.test.png"
-        // For sample local file, you'll need to supply a full filepath
-        // Keep it simple, only accept JPEGs and PNGs
+        // For sample local file, provide full filepath
+        // Keeping it simple, only accept JPEGs and PNGs
         var imageType = imagePath.endsWith(".jpg") ? MimeTypeUtils.IMAGE_JPEG : MimeTypeUtils.IMAGE_PNG;
         var media = (imagePath.startsWith("http") ?
                 new Media(imageType, new URL(imagePath)) :
                 new Media(imageType, new FileSystemResource(imagePath)));
-        var userMessage = new UserMessage("What is this image?", media);
 
-        return chatModel.call(userMessage);
+        return client.prompt()
+                .user(c -> c.text(message).media(media))
+                .call()
+                .content();
     }
 
     @GetMapping("/image")
