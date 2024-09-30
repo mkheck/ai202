@@ -95,6 +95,11 @@ public class Ai202Controller {
                 .content();
     }
 
+    /*
+       I think all services should be stateless.
+       Why do you think that?
+       Why do I think what?
+    */
     @GetMapping("/conversation")
     public ChatResponse getConversation(@RequestParam(defaultValue = "What is the meaning of life?") String message,
                                         @RequestParam(defaultValue = "default") String conversationId) {
@@ -149,8 +154,8 @@ public class Ai202Controller {
                 : new FileSystemResource(filepath);
         var infile = importFile.getFilename() != null
                 ? importFile.getFilename().contains(".")
-                    ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
-                    : importFile.getFilename()
+                ? importFile.getFilename().substring(0, importFile.getFilename().lastIndexOf('.'))
+                : importFile.getFilename()
                 : "DocAudio";
 
         logger.info("Processing " + importFile.getFilename());
@@ -184,6 +189,12 @@ public class Ai202Controller {
                 .user(c -> c.text(message).media(media))
                 .call()
                 .content();
+    }
+
+    @GetMapping("/mmrag")
+    public String getMultimodalRagResponse(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagePath,
+                                           @RequestParam(defaultValue = "Tell me everything you can about this image") String message) throws MalformedURLException {
+        return getRagResponseFromOurData(getImageDescription(imagePath, message));
     }
 
     @GetMapping("/image")
