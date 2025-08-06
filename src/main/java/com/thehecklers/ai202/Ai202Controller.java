@@ -115,7 +115,9 @@ public class Ai202Controller {
                 .call()
                 .content();
 
-        if (save) convertToSpeech(content, DIR_OUT + String.format("/TTS_Output_%s.mp3", language));
+		if (save) {
+			convertToSpeech(content, DIR_OUT + "/TTS_Output_%s.mp3".formatted(language));
+		}
 
         return content;
     }
@@ -127,7 +129,7 @@ public class Ai202Controller {
         var counter = new AtomicInteger(1);
         int numberOfSegments = (int) Math.ceil((double) content.length() / 4096);
         while (!content.isEmpty()) {
-            logger.info(String.format("Converting segment %d of %d to audio", counter.getAndIncrement(), numberOfSegments));
+            logger.info("Converting segment %d of %d to audio".formatted(counter.getAndIncrement(), numberOfSegments));
 
             var textToSpeech = content.substring(0, Math.min(content.length(), 4096));
             if (textToSpeech.length() == 4096) {
@@ -156,13 +158,13 @@ public class Ai202Controller {
         logger.info("Processing " + importFile.getFilename());
 
         var documents = new TikaDocumentReader(importFile).get();
-        logger.info(String.format("Converting to audio and saving %d file(s) to %s", documents.size(), DIR_OUT));
+        logger.info("Converting to audio and saving %d file(s) to %s".formatted(documents.size(), DIR_OUT));
 
         var counter = new AtomicInteger(1);
         for (Document doc : documents) {
-            logger.info(String.format("Processing document %d, %d characters.", counter.get(), doc.getFormattedContent().length()));
+            logger.info("Processing document %d, %d characters.".formatted(counter.get(), doc.getFormattedContent().length()));
             convertToSpeech(doc.getFormattedContent(),
-                    String.format("%s/%s_%d.mp3", DIR_OUT, infile, counter.getAndIncrement()));
+					"%s/%s_%d.mp3".formatted(DIR_OUT, infile, counter.getAndIncrement()));
         }
 
         logger.info("Audio conversion and save complete for " + infile);
@@ -176,9 +178,9 @@ public class Ai202Controller {
         // For sample local file, provide full filepath
         // Keeping it simple, only accept JPEGs and PNGs
         var imageType = imagePath.endsWith(".jpg") ? MimeTypeUtils.IMAGE_JPEG : MimeTypeUtils.IMAGE_PNG;
-        var media = (imagePath.startsWith("http") ?
+        var media = imagePath.startsWith("http") ?
                 new Media(imageType, new URL(imagePath)) :
-                new Media(imageType, new FileSystemResource(imagePath)));
+                new Media(imageType, new FileSystemResource(imagePath));
 
         return client.prompt()
                 .user(c -> c.text(message).media(media))
