@@ -1,5 +1,6 @@
 package com.thehecklers.ai202;
 
+import io.modelcontextprotocol.client.McpSyncClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -12,6 +13,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
+import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.ai.openai.audio.speech.SpeechModel;
 import org.springframework.ai.openai.audio.speech.SpeechPrompt;
@@ -30,6 +32,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
@@ -40,16 +43,18 @@ public class Ai202Controller {
     private final VectorStore vectorStore;
     private final ChatMemory chatMemory;
     private final ImageModel imageModel;
+    private final List<McpSyncClient> mcpSyncClients;
 
     private static final String DIR_IN = "/Users/mark/files/in";
     private static final String DIR_OUT = "/Users/mark/files/out";
 
     public Ai202Controller(ChatClient.Builder builder, OpenAiAudioSpeechModel speechModel, VectorStore vectorStore,
-                           ChatMemory chatMemory, ImageModel imageModel) {
+                           ChatMemory chatMemory, ImageModel imageModel, List<McpSyncClient> mcpSyncClients) {
         this.speechModel = speechModel;
         this.vectorStore = vectorStore;
         this.chatMemory = chatMemory;
         this.imageModel = imageModel;
+        this.mcpSyncClients = mcpSyncClients;
 
         // We'll revisit this later. This is going to be legen...wait for it...
 //        this.client = builder.build(); // ...DARY!
@@ -200,5 +205,14 @@ public class Ai202Controller {
     @GetMapping("/image")
     public ImageResponse createImage(@RequestParam(defaultValue = "Two dogs playing chess") String description) {
         return imageModel.call(new ImagePrompt(description));
+    }
+
+    @GetMapping("/cityquery")
+    public String getCityInfo(@RequestParam(defaultValue = "What are some weather-appropriate activities in Chicago right now?") String message) {
+        return client.prompt()
+                .user(message)
+                .toolCallbacks(new SyncMcpToolCallbackProvider(mcpSyncClients))
+                .call()
+                .content();
     }
 }

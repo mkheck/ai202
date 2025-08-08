@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "/Users/mark/dev/sessionrepos/mcpwx/target/mcpwx-0.0.1-SNAPSHOT.jar"
+      ]
+    }
+  }
+}
