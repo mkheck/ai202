@@ -3,16 +3,15 @@ package com.thehecklers.ai202;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
-import org.springframework.ai.chat.memory.InMemoryChatMemory;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
-import org.springframework.ai.model.Media;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.ai.openai.audio.speech.SpeechModel;
 import org.springframework.ai.openai.audio.speech.SpeechPrompt;
@@ -29,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
@@ -38,21 +38,23 @@ public class Ai202Controller {
     private final ChatClient client;
     private final SpeechModel speechModel;
     private final VectorStore vectorStore;
+    private final ChatMemory chatMemory;
     private final ImageModel imageModel;
 
-    private static final String DIR_IN = "/Users/markheckler/files/in";
-    private static final String DIR_OUT = "/Users/markheckler/files/out";
+    private static final String DIR_IN = "/Users/mark/files/in";
+    private static final String DIR_OUT = "/Users/mark/files/out";
 
-    public Ai202Controller(ChatClient.Builder builder, OpenAiAudioSpeechModel speechModel, VectorStore vectorStore, ImageModel imageModel) {
-        // We'll revisit this later. This is going to be legen...wait for it...
-        //this.client = builder.build(); ...DARY!
-        this.client = builder.defaultAdvisors(
-                        new MessageChatMemoryAdvisor(new InMemoryChatMemory(), "default", 10))
-                .build();
-
+    public Ai202Controller(ChatClient.Builder builder, OpenAiAudioSpeechModel speechModel, VectorStore vectorStore,
+                           ChatMemory chatMemory, ImageModel imageModel) {
         this.speechModel = speechModel;
         this.vectorStore = vectorStore;
+        this.chatMemory = chatMemory;
         this.imageModel = imageModel;
+
+        // We'll revisit this later. This is going to be legen...wait for it...
+//        this.client = builder.build(); // ...DARY!
+        this.client = builder.defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build();
     }
 
     @GetMapping
@@ -97,10 +99,11 @@ public class Ai202Controller {
     */
     @GetMapping("/conversation")
     public String getConversation(@RequestParam(defaultValue = "What is the meaning of life?") String message,
-                                        @RequestParam(defaultValue = "default") String conversationId) {
+                                        @RequestParam(defaultValue = "default") String convid) {
         return client.prompt()
                 .user(message)
-                .advisors(as -> as.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
+                //.advisors(as -> as.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, convid))
+                .advisors(as -> as.param(ChatMemory.CONVERSATION_ID, convid))
                 .call()
                 .content();
     }
@@ -172,15 +175,15 @@ public class Ai202Controller {
     }
 
     @GetMapping("/mm")
-    public String getImageDescription(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagePath,
-                                      @RequestParam(defaultValue = "What is in this image?") String message) throws MalformedURLException {
+    public String getImageDescription(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagepath,
+                                      @RequestParam(defaultValue = "What is in this image?") String message) throws MalformedURLException, URISyntaxException {
         // For sample URL, try this (courtesy of Spring AI docs): "https://docs.spring.io/spring-ai/reference/1.0-SNAPSHOT/_images/multimodal.test.png"
         // For sample local file, provide full filepath
         // Keeping it simple, only accept JPEGs and PNGs
-        var imageType = imagePath.endsWith(".jpg") ? MimeTypeUtils.IMAGE_JPEG : MimeTypeUtils.IMAGE_PNG;
-        var media = imagePath.startsWith("http") ?
-                new Media(imageType, new URL(imagePath)) :
-                new Media(imageType, new FileSystemResource(imagePath));
+        var imageType = imagepath.endsWith(".jpg") ? MimeTypeUtils.IMAGE_JPEG : MimeTypeUtils.IMAGE_PNG;
+        var media = imagepath.startsWith("http") ?
+                new Media(imageType, new URI(imagepath)) :
+                new Media(imageType, new FileSystemResource(imagepath));
 
         return client.prompt()
                 .user(c -> c.text(message).media(media))
@@ -189,9 +192,9 @@ public class Ai202Controller {
     }
 
     @GetMapping("/mmrag")
-    public String getMultimodalRagResponse(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagePath,
-                                           @RequestParam(defaultValue = "Tell me everything you can about this image") String message) throws MalformedURLException {
-        return getRagResponseFromOurData(getImageDescription(imagePath, message));
+    public String getMultimodalRagResponse(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagepath,
+                                           @RequestParam(defaultValue = "Tell me everything you can about this image") String message) throws MalformedURLException, URISyntaxException {
+        return getRagResponseFromOurData(getImageDescription(imagepath, message));
     }
 
     @GetMapping("/image")
