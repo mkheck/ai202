@@ -97,6 +97,15 @@ public class Ai202Controller {
                 .content();
     }
 
+    @GetMapping("/ragentity")
+    public KeyAirspeeds getRagResponseEntity(@RequestParam(defaultValue = "Airspeeds") String message) {
+        return client.prompt()
+                .user(message)
+                .advisors(new QuestionAnswerAdvisor(vectorStore))
+                .call()
+                .entity(KeyAirspeeds.class);
+    }
+
     /*
        I think all services should be stateless.
        Why do you think that?
