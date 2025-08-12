@@ -33,6 +33,7 @@ spring:
     virtual:
       enabled: true
 
+# https://docs.spring.io/spring-ai/reference/api/audio/speech/openai-speech.html#_configuration_properties
 #spring.ai.openai.audio.speech.options.voice=alloy (default, neutral American)
 #spring.ai.openai.audio.speech.options.voice=echo (male-sounding American)
 #spring.ai.openai.audio.speech.options.voice=fable (neutral British?)

@@ -116,7 +116,6 @@ public class Ai202Controller {
                                         @RequestParam(defaultValue = "default") String convid) {
         return client.prompt()
                 .user(message)
-                //.advisors(as -> as.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, convid))
                 .advisors(as -> as.param(ChatMemory.CONVERSATION_ID, convid))
                 .call()
                 .content();
@@ -191,7 +190,7 @@ public class Ai202Controller {
     @GetMapping("/mm")
     public String getImageDescription(@RequestParam(defaultValue = DIR_IN + "/testimage.jpg") String imagepath,
                                       @RequestParam(defaultValue = "What is in this image?") String message) throws MalformedURLException, URISyntaxException {
-        // For sample URL, try this (courtesy of Spring AI docs): "https://docs.spring.io/spring-ai/reference/1.0-SNAPSHOT/_images/multimodal.test.png"
+        // For sample URL, try this (courtesy of Spring AI docs): "https://docs.spring.io/spring-ai/reference/_images/multimodal.test.png"
         // For sample local file, provide full filepath
         // Keeping it simple, only accept JPEGs and PNGs
         var imageType = imagepath.endsWith(".jpg") ? MimeTypeUtils.IMAGE_JPEG : MimeTypeUtils.IMAGE_PNG;
