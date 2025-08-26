@@ -10,7 +10,6 @@ spring:
             server1:
               command: /Users/mark/mcpservers/mcpwx
               args:
-                -
 #            server1:
 #              command: java
 #              args:
